@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 
+ * DashkaChat Global Styles
+ * TODO: Перенести кастомные стили из текущего App.css
+ */
