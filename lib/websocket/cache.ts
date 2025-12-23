@@ -1,32 +1,47 @@
-/**
- * Cache Utility
- * TODO: Перенести из backend/src/utils/cache.js
- */
+const config = require('../config');
+const logger = require('./logger');
 
-export class Cache {
-  private store = new Map<string, { value: unknown; expires: number }>();
+class TranslationCache {
+  constructor(maxSize = config.limits.cacheMaxSize) {
+    this.cache = new Map();
+    this.maxSize = maxSize;
+  }
 
-  get<T>(key: string): T | null {
-    const item = this.store.get(key);
-    if (!item) return null;
-    if (Date.now() > item.expires) {
-      this.store.delete(key);
-      return null;
+  generateKey(text, sourceCode, targetCode) {
+    return `${text.trim()}_${sourceCode}_${targetCode}`;
+  }
+
+  get(text, sourceCode, targetCode) {
+    const key = this.generateKey(text, sourceCode, targetCode);
+    if (this.cache.has(key)) {
+      logger.debug(`Cache hit: ${key.substring(0, 50)}`);
+      return this.cache.get(key);
     }
-    return item.value as T;
+    return null;
   }
 
-  set(key: string, value: unknown, ttlMs: number = 60000): void {
-    this.store.set(key, { value, expires: Date.now() + ttlMs });
+  set(text, sourceCode, targetCode, value) {
+    const key = this.generateKey(text, sourceCode, targetCode);
+    
+    // Удаляем старые записи если кэш переполнен
+    if (this.cache.size >= this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      this.cache.delete(firstKey);
+      logger.debug(`Cache eviction: ${firstKey.substring(0, 50)}`);
+    }
+    
+    this.cache.set(key, value);
+    logger.debug(`Cache set: ${key.substring(0, 50)}`);
   }
 
-  delete(key: string): void {
-    this.store.delete(key);
+  clear() {
+    this.cache.clear();
+    logger.info('Cache cleared');
   }
 
-  clear(): void {
-    this.store.clear();
+  getSize() {
+    return this.cache.size;
   }
 }
 
-export const cache = new Cache();
+module.exports = new TranslationCache();

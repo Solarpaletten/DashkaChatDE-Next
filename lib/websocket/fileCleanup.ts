@@ -1,33 +1,35 @@
-/**
- * File Cleanup Utility
- * TODO: Перенести из backend/src/utils/fileCleanup.js
- */
+const fs = require('fs');
+const path = require('path');
+const logger = require('./logger');
 
-import { unlink, readdir, stat } from 'fs/promises';
-import { join } from 'path';
-
-const TEMP_DIRS = ['./temp', './tmp', './uploads'];
-const MAX_AGE_MS = 60 * 60 * 1000; // 1 час
-
-export async function cleanupTempFiles(): Promise<void> {
-  for (const dir of TEMP_DIRS) {
+function cleanupTempFiles(directories = ['temp', 'tmp']) {
+  directories.forEach(dir => {
     try {
-      const files = await readdir(dir);
-      const now = Date.now();
-
-      for (const file of files) {
-        const filePath = join(dir, file);
-        const stats = await stat(filePath);
-        
-        if (now - stats.mtimeMs > MAX_AGE_MS) {
-          await unlink(filePath);
-          console.log(`[Cleanup] Deleted: ${filePath}`);
-        }
+      if (fs.existsSync(dir)) {
+        const files = fs.readdirSync(dir);
+        files.forEach(file => {
+          try {
+            const filePath = path.join(dir, file);
+            const stats = fs.statSync(filePath);
+            
+            // Удаляем файлы старше 1 часа
+            const oneHourAgo = Date.now() - (60 * 60 * 1000);
+            if (stats.mtimeMs < oneHourAgo) {
+              fs.unlinkSync(filePath);
+              logger.debug(`Cleanup: removed ${filePath}`);
+            }
+          } catch (err) {
+            logger.warn(`Failed to cleanup file ${file}: ${err.message}`);
+          }
+        });
       }
-    } catch (error) {
-      // Директория может не существовать
+    } catch (err) {
+      logger.warn(`Failed to cleanup directory ${dir}: ${err.message}`);
     }
-  }
+  });
 }
 
-// TODO: Запуск по расписанию (cron или setInterval)
+// Запускаем очистку каждые 30 минут
+setInterval(cleanupTempFiles, 30 * 60 * 1000);
+
+module.exports = { cleanupTempFiles };

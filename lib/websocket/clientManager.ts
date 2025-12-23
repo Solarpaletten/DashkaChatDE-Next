@@ -1,73 +1,77 @@
-/**
- * WebSocket Client Manager
- * TODO: Перенести из backend/src/websocket/clientManager.js
- */
-
-import type { WebSocket } from 'ws';
-import { randomUUID } from 'crypto';
-
-interface Client {
-  id: string;
-  ws: WebSocket;
-  roomId?: string;
-  language?: string;
-}
+const WebSocket = require('ws');
+const logger = require('../../_migration/utils/logger');
 
 class ClientManager {
-  private clients = new Map<string, Client>();
-  private rooms = new Map<string, Set<string>>();
-
-  addClient(ws: WebSocket): string {
-    const id = randomUUID();
-    this.clients.set(id, { id, ws });
-    return id;
+  constructor() {
+    this.clients = new Map();
   }
 
-  removeClient(id: string): void {
-    const client = this.clients.get(id);
-    if (client?.roomId) {
-      this.leaveRoom(id, client.roomId);
+  addClient(ws, request) {
+    const clientId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    this.clients.set(clientId, {
+      ws,
+      role: 'unknown',
+      connected_at: new Date(),
+      ip: request.socket.remoteAddress
+    });
+
+    logger.info(`WebSocket connected: ${clientId} (total: ${this.clients.size})`);
+    return clientId;
+  }
+
+  removeClient(clientId) {
+    if (this.clients.has(clientId)) {
+      this.clients.delete(clientId);
+      logger.info(`WebSocket disconnected: ${clientId} (remaining: ${this.clients.size})`);
     }
-    this.clients.delete(id);
   }
 
-  getClient(id: string): Client | undefined {
-    return this.clients.get(id);
+  getClient(clientId) {
+    return this.clients.get(clientId);
   }
 
-  joinRoom(clientId: string, roomId: string): void {
-    const client = this.clients.get(clientId);
-    if (!client) return;
-
-    if (!this.rooms.has(roomId)) {
-      this.rooms.set(roomId, new Set());
+  setClientRole(clientId, role) {
+    if (this.clients.has(clientId)) {
+      this.clients.get(clientId).role = role;
+      logger.info(`Client ${clientId} role set to: ${role}`);
+      return true;
     }
-    this.rooms.get(roomId)!.add(clientId);
-    client.roomId = roomId;
+    return false;
   }
 
-  leaveRoom(clientId: string, roomId: string): void {
-    this.rooms.get(roomId)?.delete(clientId);
-    const client = this.clients.get(clientId);
-    if (client) client.roomId = undefined;
-  }
-
-  getRoomClients(roomId: string): Client[] {
-    const clientIds = this.rooms.get(roomId);
-    if (!clientIds) return [];
-    return Array.from(clientIds)
-      .map((id) => this.clients.get(id))
-      .filter((c): c is Client => !!c);
-  }
-
-  broadcast(roomId: string, message: string, excludeId?: string): void {
-    const clients = this.getRoomClients(roomId);
-    for (const client of clients) {
-      if (client.id !== excludeId && client.ws.readyState === 1) {
-        client.ws.send(message);
+  broadcastToOthers(senderId, data) {
+    let sentCount = 0;
+    
+    this.clients.forEach((client, clientId) => {
+      if (clientId !== senderId && client.ws.readyState === WebSocket.OPEN) {
+        try {
+          client.ws.send(JSON.stringify(data));
+          sentCount++;
+        } catch (error) {
+          logger.error(`Failed to send to ${clientId}:`, error.message);
+        }
       }
+    });
+
+    if (sentCount > 0) {
+      logger.debug(`Broadcast sent to ${sentCount} clients`);
     }
+    
+    return sentCount;
+  }
+
+  getClientCount() {
+    return this.clients.size;
+  }
+
+  getAllClients() {
+    return Array.from(this.clients.entries()).map(([id, data]) => ({
+      id,
+      role: data.role,
+      connected_at: data.connected_at
+    }));
   }
 }
 
-export const clientManager = new ClientManager();
+module.exports = new ClientManager();

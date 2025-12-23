@@ -1,38 +1,63 @@
-/**
- * POST /api/voice
- * Speech-to-Text (Whisper)
- * Принимает аудио файл, возвращает текст
- */
+const express = require('express');
+const router = express.Router();
+const path = require('path');
+const fs = require('fs');
+const upload = require('../config/multer');
+const logger = require('../utils/logger');
+const { UnifiedTranslationService } = require('../services/unifiedTranslationService');
 
-import { NextRequest, NextResponse } from 'next/server';
-// TODO: import { whisperService } from '@/services';
+const translationService = new UnifiedTranslationService();
 
-export async function POST(request: NextRequest) {
+router.post('/voice-translate', upload.single('audio'), async (req, res, next) => {
   try {
-    const formData = await request.formData();
-    const audioFile = formData.get('audio') as File | null;
-
-    if (!audioFile) {
-      return NextResponse.json(
-        { error: 'No audio file provided' },
-        { status: 400 }
-      );
+    if (!req.file) {
+      return res.status(400).json({ 
+        status: 'error',
+        message: 'Аудио файл не загружен' 
+      });
     }
 
-    // TODO: Сохранить файл во временную директорию
-    // TODO: Вызов whisperService.transcribe(filePath)
-    
-    const transcription = '[STUB] Transcribed text';
+    const { 
+      fromLang = 'RU', 
+      toLang = 'DE',
+      source_language = 'RU',
+      target_language = 'DE'
+    } = req.body;
 
-    return NextResponse.json({
-      text: transcription,
-      language: 'auto', // TODO: определение языка
-    });
-  } catch (error) {
-    console.error('[API/voice] Error:', error);
-    return NextResponse.json(
-      { error: 'Transcription failed' },
-      { status: 500 }
+    const sourceCode = (fromLang || source_language).toUpperCase();
+    const targetCode = (toLang || target_language).toUpperCase();
+
+    logger.info(`Voice translation: ${sourceCode} → ${targetCode}`);
+
+    const result = await translationService.translateVoice(
+      req.file.path,
+      sourceCode,
+      targetCode
     );
+
+    res.json({
+      status: 'success',
+      originalText: result.originalText,
+      translatedText: result.translatedText,
+      audioUrl: result.translatedAudio ? `/audio/${path.basename(result.translatedAudio)}` : null,
+      fromLanguage: result.fromLanguage,
+      toLanguage: result.toLanguage,
+      processingTime: result.processingTime,
+      confidence: result.confidence,
+      provider: result.provider
+    });
+
+    // Cleanup
+    if (fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+
+  } catch (error) {
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    next(error);
   }
-}
+});
+
+module.exports = router;
