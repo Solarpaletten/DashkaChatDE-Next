@@ -13,9 +13,6 @@ sed -i '' "s|from '../../config/currentLanguage'|from '@/config/currentLanguage'
 sed -i '' "s|from '../../config/currentLanguage'|from '@/config/currentLanguage'|g" components/dashboard/DashboardMobile.tsx
 sed -i '' "s|from '../../config/currentLanguage'|from '@/config/currentLanguage'|g" components/dashboard/DashboardTablet.tsx
 
-# 3. API routes - services (require syntax)
-sed -i '' "s|require('../../../services/translationService')|require('@/services/translationService')|g" app/api/translation/route.ts
-sed -i '' "s|require('../../../services/translationService')|require('@/services/translationService')|g" app/api/voice/route.ts
 
 # ═══════════════════════════════════════════════════════
 # VERIFICATION

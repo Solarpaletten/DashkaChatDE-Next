@@ -1,7 +1,7 @@
-// src/components/Dashboard/DashboardDesktop.tsx
+
 import React, { useState } from 'react';
-import { useTranslator } from '../../../hooks/useTranslator';
-import { currentLanguageConfig } from '../../config/currentLanguage';
+import { useTranslator } from '@/hooks/useTranslator';
+import { currentLanguageConfig } from '@/config/currentLanguage';
 
 const DashboardDesktop: React.FC = () => {
   const {

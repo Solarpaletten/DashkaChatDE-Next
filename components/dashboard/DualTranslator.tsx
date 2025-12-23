@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useTranslator } from '../../../hooks/useTranslator';
+import { useTranslator } from '@/hooks/useTranslator';
 import RoomJoin from './RoomJoin';
 
 const DualTranslator: React.FC = () => {
@@ -124,7 +124,7 @@ const DualTranslator: React.FC = () => {
     setStatus('⏰ Пробуждаю backend...');
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080'}/health`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/health`);
 
       if (response.ok) {
         setStatus('✅ Backend проснулся!');

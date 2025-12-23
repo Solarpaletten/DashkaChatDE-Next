@@ -1,10 +1,7 @@
-// ========================================
-// MOBILE DASHBOARD - iPhone оптимизация
-// ========================================
-// src/components/Dashboard/DashboardMobile.tsx
+
 import React from 'react';
-import { useTranslator } from '../../../hooks/useTranslator';
-import { currentLanguageConfig } from '../../config/currentLanguage';
+import { useTranslator } from '@/hooks/useTranslator';
+import { currentLanguageConfig } from '@/config/currentLanguage';
 
 const DashboardMobile: React.FC = () => {
   const {

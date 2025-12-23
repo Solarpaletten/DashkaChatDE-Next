@@ -1,10 +1,7 @@
-// ========================================
-// TABLET DASHBOARD - iPad оптимизация
-// ========================================
-// src/components/Dashboard/DashboardTablet.tsx
+
 import React from 'react';
-import { useTranslator } from '../../../hooks/useTranslator';
-import { currentLanguageConfig } from '../../config/currentLanguage';
+import { useTranslator } from '@/hooks/useTranslator';
+import { currentLanguageConfig } from '@/config/currentLanguage';
 
 const DashboardTablet: React.FC = () => {
   const {
