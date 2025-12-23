@@ -286,4 +286,4 @@ WebSocket: `ws://localhost:3000/ws`
 
 Built with ☀️ by Team SOLAR
 
-
+git commit -m "fix: move tailwind to dependencies"
