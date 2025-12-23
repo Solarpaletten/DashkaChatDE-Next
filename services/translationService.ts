@@ -1,8 +1,6 @@
-const OpenAI = require('openai');
-const { transcribeAudio } = require('./whisperService');
-const { speakText } = require('./textToSpeechService');
-const fs = require('fs');
-const path = require('path');
+import OpenAI from 'openai';
+import { transcribeAudio } from './whisperService';
+import { speakText } from './textToSpeechService';
 
 class UnifiedTranslationService {
   constructor() {
@@ -213,4 +211,4 @@ Respond with ONLY the 2-letter code, nothing else.`
   }
 }
 
-module.exports = { UnifiedTranslationService };
+export { UnifiedTranslationService };

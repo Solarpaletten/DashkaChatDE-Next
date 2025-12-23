@@ -1,42 +1,12 @@
-# ═══════════════════════════════════════════════════════
-# ALIAS MIGRATION SCRIPT
-# ═══════════════════════════════════════════════════════
+# 1. Заменить require на import
+sed -i '' "1s/.*/import { promises as fs } from 'fs';/" services/textToSpeechService.ts
+sed -i '' "2s/.*/import fsSync from 'fs';/" services/textToSpeechService.ts
+sed -i '' "3s/.*/import path from 'path';/" services/textToSpeechService.ts
+sed -i '' "4s/.*/import OpenAI from 'openai';/" services/textToSpeechService.ts
 
-# 1. Dashboard компоненты - hooks
-sed -i '' "s|from '../../../hooks/useTranslator'|from '@/hooks/useTranslator'|g" components/dashboard/DashboardDesktop.tsx
-sed -i '' "s|from '../../../hooks/useTranslator'|from '@/hooks/useTranslator'|g" components/dashboard/DashboardMobile.tsx
-sed -i '' "s|from '../../../hooks/useTranslator'|from '@/hooks/useTranslator'|g" components/dashboard/DashboardTablet.tsx
-sed -i '' "s|from '../../../hooks/useTranslator'|from '@/hooks/useTranslator'|g" components/dashboard/DualTranslator.tsx
+# 2. Заменить module.exports на export
+sed -i '' "s/module.exports = {/export {/" services/textToSpeechService.ts
 
-# 2. Dashboard компоненты - config
-sed -i '' "s|from '../../config/currentLanguage'|from '@/config/currentLanguage'|g" components/dashboard/DashboardDesktop.tsx
-sed -i '' "s|from '../../config/currentLanguage'|from '@/config/currentLanguage'|g" components/dashboard/DashboardMobile.tsx
-sed -i '' "s|from '../../config/currentLanguage'|from '@/config/currentLanguage'|g" components/dashboard/DashboardTablet.tsx
-
-
-# ═══════════════════════════════════════════════════════
-# VERIFICATION
-# ═══════════════════════════════════════════════════════
-
-# Проверка - должно быть ПУСТО:
-echo "=== Checking for remaining relative imports ==="
-grep -rn "from '\.\." --include="*.ts" --include="*.tsx" .
-grep -rn "require('\.\." --include="*.ts" --include="*.tsx" .
-
-# Проверка alias импортов:
-echo "=== Alias imports (should show results) ==="
-grep -rn "@/hooks" --include="*.ts" --include="*.tsx" .
-grep -rn "@/config" --include="*.ts" --include="*.tsx" .
-grep -rn "@/services" --include="*.ts" --include="*.tsx" .
-
-# ═══════════════════════════════════════════════════════
-# BUILD TEST
-# ═══════════════════════════════════════════════════════
-npm run build
-
-# ═══════════════════════════════════════════════════════
-# COMMIT
-# ═══════════════════════════════════════════════════════
-git add -A
-git commit -m "refactor: migrate all imports to @/* alias pattern"
-git push
+# 3. Проверить
+head -6 services/textToSpeechService.ts
+tail -6 services/textToSpeechService.ts

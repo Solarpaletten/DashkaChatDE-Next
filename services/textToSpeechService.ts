@@ -1,7 +1,7 @@
-const fs = require('fs').promises;
-const fsSync = require('fs');
-const path = require('path');
-const OpenAI = require('openai');
+import { promises as fs } from 'fs';
+import fsSync from 'fs';
+import path from 'path';
+import OpenAI from 'openai';
 
 /**
  * Text-to-Speech Service using OpenAI TTS API
@@ -370,7 +370,7 @@ async function generateSpeech(text, language = 'en', voice = null, model = 'stan
   return await ttsService.generateSpeech(text, language, voice, model, speed);
 }
 
-module.exports = {
+export {
   speakText,
   generateSpeech,
   TextToSpeechService,

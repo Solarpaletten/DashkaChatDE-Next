@@ -1,7 +1,6 @@
-
-const fs = require('fs');
-const path = require('path');
-const OpenAI = require('openai');
+import fs from 'fs';
+import path from 'path';
+import OpenAI from 'openai';
 
 class WhisperService {
   constructor(apiKey) {
@@ -92,7 +91,7 @@ async function transcribeAudio(
   return whisperService.transcribeAudio(audioFilePath, language);
 }
 
-module.exports = {
+export {
   WhisperService,
   transcribeAudio,
 };
