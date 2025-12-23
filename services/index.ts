@@ -1,10 +1,40 @@
-const { translate } = require('./translationService');
+/**
+ * Services barrel export
+ * Central export point for all service modules
+ * 
+ * @module services
+ */
 
-const { wisperService } = require('./whisperService');
+// Translation Service (main)
+export { UnifiedTranslationService } from './translationService';
+export type {
+  TranslationResult,
+  VoiceTranslationResult,
+  LanguageDetectionResult,
+  SupportedLanguage,
+} from './translationService';
 
-const { synthesizeSpeech } = require('./textToSpeechService');
+// Whisper STT Service
+export {
+  WhisperService,
+  whisperService,
+  transcribeAudio,
+} from './whisperService';
+export type {
+  TranscriptionResult,
+  WhisperServiceConfig,
+} from './whisperService';
 
-
-//export { whisperService } from './whisperService';
-//export { textToSpeechService } from './textToSpeechService';
-//export { translationService } from './translationService';
+// TTS Service
+export {
+  TextToSpeechService,
+  ttsService,
+  speakText,
+  generateSpeech,
+} from './textToSpeechService';
+export type {
+  TTSResult,
+  TTSConfig,
+  TTSVoice,
+  TTSModel,
+} from './textToSpeechService';

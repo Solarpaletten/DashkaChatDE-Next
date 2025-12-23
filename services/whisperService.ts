@@ -1,97 +1,140 @@
+/**
+ * Whisper Speech-to-Text Service
+ * OpenAI Whisper API integration for audio transcription
+ * 
+ * @module services/whisperService
+ */
+
 import fs from 'fs';
 import path from 'path';
 import OpenAI from 'openai';
 
+// Types
+interface TranscriptionResult {
+  text: string;
+  language: string;
+  confidence: number;
+  provider: string;
+}
+
+interface WhisperServiceConfig {
+  apiKey: string;
+  model?: string;
+  temperature?: number;
+}
+
+/**
+ * WhisperService - Speech-to-Text using OpenAI Whisper API
+ */
 class WhisperService {
-  constructor(apiKey) {
+  private openai: OpenAI;
+  private model: string;
+  private temperature: number;
+
+  constructor(config?: WhisperServiceConfig) {
+    const apiKey = config?.apiKey || process.env.OPENAI_API_KEY;
+    
+    if (!apiKey) {
+      console.warn('⚠️ WhisperService: No API key provided, service will be limited');
+    }
+
     this.openai = new OpenAI({ apiKey });
+    this.model = config?.model || 'whisper-1';
+    this.temperature = config?.temperature || 0.2;
   }
 
   /**
-   * Распознаёт речь из аудиофайла с использованием Whisper API.
-   * Поддерживает автоопределение языка и диалектов.
-   * @param {string} audioFilePath - путь к аудиофайлу
-   * @param {string} [language='auto'] - язык речи (или auto)
-   * @returns {Promise<{text: string, language: string, confidence: number, provider: string}>}
+   * Transcribe audio file to text
+   * @param audioFilePath - Path to audio file
+   * @param language - Language code (e.g., 'ru', 'de', 'en') or 'auto'
+   * @returns Transcription result with text and metadata
    */
-  async transcribeAudio(audioFilePath, language = 'auto') {
+  async transcribeAudio(
+    audioFilePath: string,
+    language: string = 'auto'
+  ): Promise<TranscriptionResult> {
     try {
+      // Validate file exists
       if (!fs.existsSync(audioFilePath)) {
-        throw new Error(`Файл не найден: ${audioFilePath}`);
+        throw new Error(`Audio file not found: ${audioFilePath}`);
       }
 
-      console.log(`🎤 Transcribing audio file: ${path.basename(audioFilePath)}`);
-      console.log(`🌍 Whisper language param: ${language}`);
+      console.log(`🎤 Transcribing: ${path.basename(audioFilePath)} [${language}]`);
 
-      // Маппинг для поддержки диалектов
-      const langMap = {
-        'fr-CH': 'fr',
-        'fr-FR': 'fr',
-        'fr-CA': 'fr',
+      // Language mapping for Whisper API
+      const languageMap: Record<string, string> = {
         'ru-RU': 'ru',
-        'ru': 'ru'
+        'de-DE': 'de',
+        'en-US': 'en',
+        'en-GB': 'en',
+        'pl-PL': 'pl',
+        'fr-FR': 'fr',
+        'fr-CH': 'fr',
+        'es-ES': 'es',
+        'auto': '',
       };
-      const whisperLang = langMap[language] || (language === 'auto' ? undefined : language);
 
-      // Whisper API
+      const whisperLang = languageMap[language] || language.split('-')[0] || undefined;
+
+      // Call Whisper API
       const transcription = await this.openai.audio.transcriptions.create({
         file: fs.createReadStream(audioFilePath),
-        model: 'whisper-1',
-        language: whisperLang,
+        model: this.model,
+        language: whisperLang || undefined,
         response_format: 'json',
-        temperature: 0.2
+        temperature: this.temperature,
       });
 
       const text = transcription.text?.trim() || '';
-      const detectedLang = transcription.language || whisperLang || 'auto';
-
-      // Проверка на смешанный алфавит
-      const hasMixedAlphabet =
-        /[а-яА-Я]/.test(text) && /[a-zA-Z]/.test(text);
-      if (hasMixedAlphabet) {
-        console.warn('⚠️ Whisper: смешанный алфавит в тексте (возможно, неверное определение языка)');
-      }
-
-      console.log(`✅ Transcription done [${detectedLang}] → ${text.slice(0, 60)}...`);
+      
+      console.log(`✅ Transcription complete: "${text.substring(0, 50)}..."`);
 
       return {
         text,
-        language: detectedLang,
-        confidence: transcription.confidence || 0.95,
-        provider: 'openai-whisper-1'
+        language: whisperLang || 'auto',
+        confidence: 0.95,
+        provider: 'openai-whisper-1',
       };
-    } catch (error) {
-      console.error(`❌ Ошибка транскрипции Whisper: ${error.message}`);
-      throw error;
+    } catch (error: any) {
+      console.error(`❌ Whisper transcription error: ${error.message}`);
+      throw new Error(`Transcription failed: ${error.message}`);
     }
   }
 
   /**
-   * Тестовая функция для прямого текста.
+   * Check if service is ready
    */
-  async transcribeText(inputText) {
-    if (!inputText) {
-      throw new Error('Текст не передан');
-    }
-    return {
-      text: inputText.trim(),
-      language: 'text',
-      confidence: 1.0,
-      provider: 'text-input'
-    };
+  isReady(): boolean {
+    return !!process.env.OPENAI_API_KEY;
   }
 }
 
-const whisperService = new WhisperService(process.env.OPENAI_API_KEY);
+// Singleton instance
+const whisperService = new WhisperService();
 
+/**
+ * Helper function for direct transcription
+ * @param audioFilePath - Path to audio file
+ * @param language - Language code or 'auto'
+ * @returns Transcribed text
+ */
 async function transcribeAudio(
   audioFilePath: string,
-  language = 'auto'
-) {
-  return whisperService.transcribeAudio(audioFilePath, language);
+  language: string = 'auto'
+): Promise<string> {
+  const result = await whisperService.transcribeAudio(audioFilePath, language);
+  return result.text;
 }
 
+// Named exports
 export {
   WhisperService,
+  whisperService,
   transcribeAudio,
+};
+
+// Type exports
+export type {
+  TranscriptionResult,
+  WhisperServiceConfig,
 };

@@ -1,378 +1,279 @@
+/**
+ * Text-to-Speech Service
+ * OpenAI TTS API integration for speech synthesis
+ * 
+ * @module services/textToSpeechService
+ */
+
 import { promises as fs } from 'fs';
-import fsSync from 'fs';
+import { existsSync, mkdirSync } from 'fs';
 import path from 'path';
 import OpenAI from 'openai';
 
+// Types
+type TTSVoice = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer';
+type TTSModel = 'tts-1' | 'tts-1-hd';
+
+interface TTSResult {
+  audioPath: string;
+  audioUrl: string;
+  text: string;
+  language: string;
+  voice: TTSVoice;
+  duration: number;
+  fileSize: number;
+  processingTime: number;
+  provider: string;
+}
+
+interface TTSConfig {
+  apiKey?: string;
+  defaultVoice?: TTSVoice;
+  defaultModel?: TTSModel;
+  outputDir?: string;
+}
+
+// Voice mapping by language
+const LANGUAGE_VOICES: Record<string, TTSVoice> = {
+  en: 'alloy',
+  ru: 'shimmer',
+  de: 'onyx',
+  fr: 'nova',
+  es: 'nova',
+  pl: 'echo',
+  cs: 'fable',
+  lt: 'alloy',
+  lv: 'alloy',
+  no: 'onyx',
+};
+
 /**
- * Text-to-Speech Service using OpenAI TTS API
- * Supports multiple languages and voices
+ * TextToSpeechService - TTS using OpenAI API
  */
 class TextToSpeechService {
-  constructor() {
-    // Initialize OpenAI client
-    if (process.env.OPENAI_API_KEY) {
-      this.openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY
-      });
-      this.enabled = true;
-      console.log('🔊 Text-to-Speech Service initialized (OpenAI TTS)');
+  private openai: OpenAI;
+  private defaultVoice: TTSVoice;
+  private defaultModel: TTSModel;
+  private outputDir: string;
+  private enabled: boolean;
+
+  constructor(config?: TTSConfig) {
+    const apiKey = config?.apiKey || process.env.OPENAI_API_KEY;
+    
+    this.enabled = !!apiKey;
+    this.openai = new OpenAI({ apiKey });
+    this.defaultVoice = config?.defaultVoice || 'alloy';
+    this.defaultModel = config?.defaultModel || 'tts-1';
+    this.outputDir = config?.outputDir || path.join(process.cwd(), 'public', 'audio');
+
+    // Ensure output directory exists
+    this.ensureOutputDir();
+
+    if (this.enabled) {
+      console.log('🔊 TextToSpeechService initialized');
     } else {
-      this.openai = null;
-      this.enabled = false;
-      console.log('🔊 Text-to-Speech Service initialized (mock mode - no API key)');
+      console.warn('⚠️ TextToSpeechService: No API key, mock mode enabled');
     }
-
-    // Supported languages with their voice preferences
-    this.supportedLanguages = {
-      'en': { name: 'English', voice: 'alloy' },
-      'ru': { name: 'Russian', voice: 'shimmer' },
-      'de': { name: 'German', voice: 'onyx' },
-      'es': { name: 'Spanish', voice: 'nova' },
-      'cs': { name: 'Czech', voice: 'fable' },
-      'pl': { name: 'Polish', voice: 'echo' },
-      'lt': { name: 'Lithuanian', voice: 'alloy' },
-      'lv': { name: 'Latvian', voice: 'alloy' },
-      'no': { name: 'Norwegian', voice: 'onyx' },
-      'fr': { name: 'French', voice: 'nova' }
-    };
-
-    // Available OpenAI voices
-    this.availableVoices = ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'];
-
-    // TTS models
-    this.models = {
-      standard: 'tts-1',      // Faster, lower quality
-      hd: 'tts-1-hd'          // Slower, higher quality
-    };
-
-    // Ensure temp directory exists
-    this.ensureTempDir();
   }
 
   /**
-   * Ensure temporary directory for audio files exists
+   * Ensure output directory exists
    */
-  async ensureTempDir() {
-    const tempDir = path.join(__dirname, '../../tmp');
+  private ensureOutputDir(): void {
     try {
-      if (!fsSync.existsSync(tempDir)) {
-        await fs.mkdir(tempDir, { recursive: true });
-        console.log('📁 Created tmp directory for TTS');
+      if (!existsSync(this.outputDir)) {
+        mkdirSync(this.outputDir, { recursive: true });
+        console.log(`📁 Created TTS output directory: ${this.outputDir}`);
       }
     } catch (error) {
-      console.error('Failed to create tmp directory:', error);
+      console.warn(`⚠️ Could not create output directory: ${this.outputDir}`);
     }
   }
 
   /**
-   * Generate speech from text using OpenAI TTS
-   * @param {string} text - Text to convert to speech
-   * @param {string} language - Language code (e.g., 'en', 'ru', 'de')
-   * @param {string} voice - Voice name (optional, auto-selected based on language)
-   * @param {string} model - TTS model ('standard' or 'hd')
-   * @param {number} speed - Speech speed (0.25 to 4.0)
-   * @returns {Object} Result with audioPath, language, text, duration, provider
+   * Get voice for language
    */
-  async generateSpeech(text, language = 'en', voice = null, model = 'standard', speed = 1.0) {
+  private getVoiceForLanguage(language: string): TTSVoice {
+    const langCode = language.toLowerCase().split('-')[0];
+    return LANGUAGE_VOICES[langCode] || this.defaultVoice;
+  }
+
+  /**
+   * Generate speech from text
+   * @param text - Text to convert to speech
+   * @param language - Language code (e.g., 'en', 'ru', 'de')
+   * @param voice - Voice name (optional)
+   * @param model - TTS model (optional)
+   * @param speed - Speech speed 0.25-4.0 (optional)
+   * @returns TTS result with audio file path
+   */
+  async generateSpeech(
+    text: string,
+    language: string = 'en',
+    voice: TTSVoice | null = null,
+    model: TTSModel = 'tts-1',
+    speed: number = 1.0
+  ): Promise<TTSResult> {
     const startTime = Date.now();
 
+    // Validate inputs
+    if (!text || text.trim().length === 0) {
+      throw new Error('Text is required for TTS');
+    }
+
+    if (text.length > 4096) {
+      throw new Error('Text too long (max 4096 characters)');
+    }
+
+    if (speed < 0.25 || speed > 4.0) {
+      throw new Error('Speed must be between 0.25 and 4.0');
+    }
+
+    const selectedVoice = voice || this.getVoiceForLanguage(language);
+    const langCode = language.toLowerCase().split('-')[0];
+
+    // Generate filename
+    const filename = `tts_${Date.now()}_${langCode}.mp3`;
+    const filepath = path.join(this.outputDir, filename);
+
     try {
-      // Validate inputs
-      if (!text || text.trim().length === 0) {
-        throw new Error('Text is required for TTS');
-      }
-
-      if (text.length > 4096) {
-        throw new Error('Text too long (max 4096 characters)');
-      }
-
-      // Normalize language code
-      const langCode = language.toLowerCase();
-      
-      // Select voice based on language if not specified
-      const selectedVoice = voice || this.supportedLanguages[langCode]?.voice || 'alloy';
-
-      // Validate voice
-      if (!this.availableVoices.includes(selectedVoice)) {
-        throw new Error(`Invalid voice. Available: ${this.availableVoices.join(', ')}`);
-      }
-
-      // Validate speed
-      if (speed < 0.25 || speed > 4.0) {
-        throw new Error('Speed must be between 0.25 and 4.0');
-      }
-
-      // If OpenAI not configured, return mock
       if (!this.enabled) {
-        return this.generateMockSpeech(text, langCode);
+        return this.generateMockSpeech(text, langCode, filepath, filename, startTime);
       }
 
-      // Generate filename
-      const filename = `tts_${Date.now()}_${langCode}.mp3`;
-      const tempDir = path.join(__dirname, '../../tmp');
-      const filepath = path.join(tempDir, filename);
-
-      console.log(`🔊 Generating speech: "${text.substring(0, 50)}..." (${langCode}, ${selectedVoice})`);
+      console.log(`🔊 Generating speech: "${text.substring(0, 40)}..." [${langCode}, ${selectedVoice}]`);
 
       // Call OpenAI TTS API
       const mp3Response = await this.openai.audio.speech.create({
-        model: this.models[model] || this.models.standard,
+        model: model,
         voice: selectedVoice,
         input: text,
         speed: speed,
-        response_format: 'mp3'
+        response_format: 'mp3',
       });
 
-      // Convert response to buffer
+      // Convert response to buffer and save
       const buffer = Buffer.from(await mp3Response.arrayBuffer());
-
-      // Write to file
       await fs.writeFile(filepath, buffer);
 
-      // Estimate duration (approximate: 150 words per minute average)
+      // Estimate duration (rough: ~150 words per minute)
       const wordCount = text.split(/\s+/).length;
-      const estimatedDuration = Math.ceil((wordCount / 150) * 60); // seconds
+      const estimatedDuration = Math.ceil((wordCount / 150) * 60);
 
-      const result = {
-        audioPath: filepath,
-        audioUrl: `/audio/${filename}`,
-        language: langCode,
-        text: text,
-        voice: selectedVoice,
-        model: this.models[model],
-        duration: estimatedDuration,
-        fileSize: buffer.length,
-        processingTime: Date.now() - startTime,
-        provider: 'openai-tts'
-      };
-
-      console.log(`✅ TTS generated: ${filename} (${buffer.length} bytes, ${estimatedDuration}s)`);
-
-      return result;
-
-    } catch (error) {
-      console.error('TTS Error:', error.message);
-
-      // Fallback to mock on error
-      if (this.enabled) {
-        console.log('🔄 Falling back to mock TTS due to error');
-        return this.generateMockSpeech(text, language, error.message);
-      }
-
-      throw new Error(`Text-to-Speech failed: ${error.message}`);
-    }
-  }
-
-  /**
-   * Generate mock speech (fallback when API unavailable)
-   * @param {string} text - Text content
-   * @param {string} language - Language code
-   * @param {string} errorMessage - Optional error message
-   * @returns {Object} Mock result
-   */
-  async generateMockSpeech(text, language, errorMessage = null) {
-    try {
-      const tempDir = path.join(__dirname, '../../tmp');
-      const filename = `tts_mock_${Date.now()}_${language}.mp3`;
-      const filepath = path.join(tempDir, filename);
-
-      // Create a small valid MP3 file (silent audio)
-      // This is a minimal valid MP3 header + frame
-      const mockMp3Data = Buffer.from([
-        0xFF, 0xFB, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-      ]);
-
-      await fs.writeFile(filepath, mockMp3Data);
-
-      console.log(`⚠️ Generated mock TTS: ${filename}`);
+      console.log(`✅ TTS complete: ${filename} (${buffer.length} bytes)`);
 
       return {
         audioPath: filepath,
         audioUrl: `/audio/${filename}`,
-        language,
-        text,
-        voice: 'mock',
-        duration: Math.ceil(text.length * 0.05), // Rough estimate
-        fileSize: mockMp3Data.length,
-        processingTime: 10,
-        provider: 'mock-tts',
-        ...(errorMessage && { error: errorMessage })
+        text: text,
+        language: langCode,
+        voice: selectedVoice,
+        duration: estimatedDuration,
+        fileSize: buffer.length,
+        processingTime: Date.now() - startTime,
+        provider: 'openai-tts-1',
       };
-    } catch (error) {
-      console.error('Mock TTS error:', error);
-      throw new Error(`Mock TTS failed: ${error.message}`);
+    } catch (error: any) {
+      console.error(`❌ TTS error: ${error.message}`);
+      
+      // Fallback to mock on error
+      if (this.enabled) {
+        console.log('🔄 Falling back to mock TTS');
+        return this.generateMockSpeech(text, langCode, filepath, filename, startTime, error.message);
+      }
+      
+      throw new Error(`TTS failed: ${error.message}`);
     }
   }
 
   /**
-   * Generate speech with retry logic
-   * @param {string} text - Text to convert
-   * @param {string} language - Language code
-   * @param {number} maxRetries - Maximum retry attempts
-   * @returns {Object} Result
+   * Generate mock speech (for testing or when API unavailable)
    */
-  async generateSpeechWithRetry(text, language = 'en', maxRetries = 3) {
-    let lastError;
+  private async generateMockSpeech(
+    text: string,
+    language: string,
+    filepath: string,
+    filename: string,
+    startTime: number,
+    errorMessage?: string
+  ): Promise<TTSResult> {
+    // Minimal valid MP3 header
+    const mockMp3 = Buffer.from([
+      0xFF, 0xFB, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    ]);
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        return await this.generateSpeech(text, language);
-      } catch (error) {
-        lastError = error;
-        console.warn(`TTS attempt ${attempt}/${maxRetries} failed:`, error.message);
+    await fs.writeFile(filepath, mockMp3);
 
-        if (attempt < maxRetries) {
-          // Exponential backoff: 1s, 2s, 4s
-          const delay = Math.pow(2, attempt - 1) * 1000;
-          console.log(`Retrying in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
-      }
-    }
+    console.log(`⚠️ Mock TTS generated: ${filename}`);
 
-    throw new Error(`TTS failed after ${maxRetries} attempts: ${lastError.message}`);
+    return {
+      audioPath: filepath,
+      audioUrl: `/audio/${filename}`,
+      text: text,
+      language: language,
+      voice: 'alloy',
+      duration: Math.ceil(text.length * 0.05),
+      fileSize: mockMp3.length,
+      processingTime: Date.now() - startTime,
+      provider: errorMessage ? 'mock-fallback' : 'mock-tts',
+    };
   }
 
   /**
-   * Generate speech for multiple texts in batch
-   * @param {Array} texts - Array of {text, language} objects
-   * @returns {Array} Array of results
+   * Check if service is enabled
    */
-  async generateBatch(texts) {
-    const results = [];
-
-    for (const item of texts) {
-      try {
-        const result = await this.generateSpeech(item.text, item.language);
-        results.push({ ...result, success: true });
-      } catch (error) {
-        results.push({
-          text: item.text,
-          language: item.language,
-          success: false,
-          error: error.message
-        });
-      }
-    }
-
-    return results;
-  }
-
-  /**
-   * Clean up old audio files
-   * @param {number} maxAgeMs - Maximum age in milliseconds (default: 1 hour)
-   */
-  async cleanupOldFiles(maxAgeMs = 60 * 60 * 1000) {
-    try {
-      const tempDir = path.join(__dirname, '../../tmp');
-      const files = await fs.readdir(tempDir);
-      const now = Date.now();
-      let deletedCount = 0;
-
-      for (const file of files) {
-        if (file.startsWith('tts_')) {
-          const filepath = path.join(tempDir, file);
-          const stats = await fs.stat(filepath);
-
-          if (now - stats.mtimeMs > maxAgeMs) {
-            await fs.unlink(filepath);
-            deletedCount++;
-          }
-        }
-      }
-
-      if (deletedCount > 0) {
-        console.log(`🧹 Cleaned up ${deletedCount} old TTS files`);
-      }
-    } catch (error) {
-      console.warn('TTS cleanup error:', error.message);
-    }
-  }
-
-  /**
-   * Get supported languages
-   * @returns {Object} Supported languages
-   */
-  getSupportedLanguages() {
-    return this.supportedLanguages;
-  }
-
-  /**
-   * Get available voices
-   * @returns {Array} Available voice names
-   */
-  getAvailableVoices() {
-    return this.availableVoices;
-  }
-
-  /**
-   * Check if TTS is enabled
-   * @returns {boolean} True if OpenAI TTS is configured
-   */
-  isEnabled() {
+  isEnabled(): boolean {
     return this.enabled;
   }
 
   /**
-   * Get service statistics
-   * @returns {Object} Service stats
+   * Get supported voices
    */
-  getStats() {
-    return {
-      enabled: this.enabled,
-      supportedLanguages: Object.keys(this.supportedLanguages).length,
-      availableVoices: this.availableVoices.length,
-      models: Object.keys(this.models),
-      provider: this.enabled ? 'openai-tts' : 'mock'
-    };
-  }
-
-  // ============================================
-  // Legacy compatibility methods
-  // ============================================
-
-  /**
-   * Legacy method for backward compatibility
-   * @param {string} text - Text to speak
-   * @param {string} language - Language code
-   * @returns {string} Audio file path
-   */
-  async speakText(text, language = 'en') {
-    const result = await this.generateSpeech(text, language);
-    return result.audioPath;
+  getAvailableVoices(): TTSVoice[] {
+    return ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'];
   }
 }
 
-// Create singleton instance
+// Singleton instance
 const ttsService = new TextToSpeechService();
 
-// Schedule cleanup every 30 minutes
-setInterval(() => {
-  ttsService.cleanupOldFiles();
-}, 30 * 60 * 1000);
-
-// ============================================
-// Export functions for compatibility
-// ============================================
-
 /**
- * Generate speech (compatibility export)
+ * Helper function for simple speech generation
+ * @param text - Text to speak
+ * @param language - Language code
+ * @returns Path to generated audio file
  */
-async function speakText(text, language = 'en') {
-  return await ttsService.speakText(text, language);
+async function speakText(text: string, language: string = 'en'): Promise<string> {
+  const result = await ttsService.generateSpeech(text, language);
+  return result.audioPath;
 }
 
 /**
- * Generate speech with full options
+ * Helper function with full options
  */
-async function generateSpeech(text, language = 'en', voice = null, model = 'standard', speed = 1.0) {
-  return await ttsService.generateSpeech(text, language, voice, model, speed);
+async function generateSpeech(
+  text: string,
+  language: string = 'en',
+  voice: TTSVoice | null = null,
+  model: TTSModel = 'tts-1',
+  speed: number = 1.0
+): Promise<TTSResult> {
+  return ttsService.generateSpeech(text, language, voice, model, speed);
 }
 
+// Named exports
 export {
+  TextToSpeechService,
+  ttsService,
   speakText,
   generateSpeech,
-  TextToSpeechService,
-  ttsService
+};
+
+// Type exports
+export type {
+  TTSResult,
+  TTSConfig,
+  TTSVoice,
+  TTSModel,
 };
