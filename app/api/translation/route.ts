@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Dynamic import to avoid issues with CommonJS service
-    const { UnifiedTranslationService } = require('@/services/translationService');
+    const { UnifiedTranslationService } = require('../../services/translation/unifiedTranslationService');
     const translationService = new UnifiedTranslationService();
 
     const result = await translationService.translateText(

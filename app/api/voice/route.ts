@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     console.log(`[API/voice] Processing: ${sourceCode} → ${targetCode}`);
 
     // Dynamic import services
-    const { UnifiedTranslationService } = require('@/services/translationService');
+    const { UnifiedTranslationService } = require('../../services/UnifiedTranslationService');
     const translationService = new UnifiedTranslationService();
 
     const result = await translationService.translateVoice(
