@@ -1,0 +1,45 @@
+# ═══════════════════════════════════════════════════════
+# ALIAS MIGRATION SCRIPT
+# ═══════════════════════════════════════════════════════
+
+# 1. Dashboard компоненты - hooks
+sed -i '' "s|from '../../../hooks/useTranslator'|from '@/hooks/useTranslator'|g" components/dashboard/DashboardDesktop.tsx
+sed -i '' "s|from '../../../hooks/useTranslator'|from '@/hooks/useTranslator'|g" components/dashboard/DashboardMobile.tsx
+sed -i '' "s|from '../../../hooks/useTranslator'|from '@/hooks/useTranslator'|g" components/dashboard/DashboardTablet.tsx
+sed -i '' "s|from '../../../hooks/useTranslator'|from '@/hooks/useTranslator'|g" components/dashboard/DualTranslator.tsx
+
+# 2. Dashboard компоненты - config
+sed -i '' "s|from '../../config/currentLanguage'|from '@/config/currentLanguage'|g" components/dashboard/DashboardDesktop.tsx
+sed -i '' "s|from '../../config/currentLanguage'|from '@/config/currentLanguage'|g" components/dashboard/DashboardMobile.tsx
+sed -i '' "s|from '../../config/currentLanguage'|from '@/config/currentLanguage'|g" components/dashboard/DashboardTablet.tsx
+
+# 3. API routes - services (require syntax)
+sed -i '' "s|require('../../../services/translationService')|require('@/services/translationService')|g" app/api/translation/route.ts
+sed -i '' "s|require('../../../services/translationService')|require('@/services/translationService')|g" app/api/voice/route.ts
+
+# ═══════════════════════════════════════════════════════
+# VERIFICATION
+# ═══════════════════════════════════════════════════════
+
+# Проверка - должно быть ПУСТО:
+echo "=== Checking for remaining relative imports ==="
+grep -rn "from '\.\." --include="*.ts" --include="*.tsx" .
+grep -rn "require('\.\." --include="*.ts" --include="*.tsx" .
+
+# Проверка alias импортов:
+echo "=== Alias imports (should show results) ==="
+grep -rn "@/hooks" --include="*.ts" --include="*.tsx" .
+grep -rn "@/config" --include="*.ts" --include="*.tsx" .
+grep -rn "@/services" --include="*.ts" --include="*.tsx" .
+
+# ═══════════════════════════════════════════════════════
+# BUILD TEST
+# ═══════════════════════════════════════════════════════
+npm run build
+
+# ═══════════════════════════════════════════════════════
+# COMMIT
+# ═══════════════════════════════════════════════════════
+git add -A
+git commit -m "refactor: migrate all imports to @/* alias pattern"
+git push
