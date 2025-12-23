@@ -1,4 +1,4 @@
-// backend/src/services/whisperService.js
+
 const fs = require('fs');
 const path = require('path');
 const OpenAI = require('openai');
@@ -83,4 +83,16 @@ class WhisperService {
   }
 }
 
-module.exports = WhisperService;
+const whisperService = new WhisperService(process.env.OPENAI_API_KEY);
+
+async function transcribeAudio(
+  audioFilePath: string,
+  language = 'auto'
+) {
+  return whisperService.transcribeAudio(audioFilePath, language);
+}
+
+module.exports = {
+  WhisperService,
+  transcribeAudio,
+};

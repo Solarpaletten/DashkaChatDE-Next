@@ -276,7 +276,6 @@ const DualTranslator: React.FC = () => {
                 <button
                   onClick={() => {
                     setOriginalText("");
-                    setTranslatedText("");
                     if (isRecording) toggleRecording(); // остановить запись
                   }}
                   className="px-3 py-1 bg-red-500/70 hover:bg-red-600 rounded-lg text-white text-sm"

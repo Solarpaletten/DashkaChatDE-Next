@@ -32,9 +32,11 @@ export const useTranslator = () => {
   const websocketRef = useRef<WebSocket | null>(null);
 
   const config = {
-    aiServer: import.meta.env.VITE_API_URL || "http://localhost:8080",
-    wsServer: import.meta.env.VITE_WS_URL || "ws://localhost:8080/ws",
+    aiServer: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080",
+    wsServer: process.env.NEXT_PUBLIC_API_URL || "ws://localhost:8080/ws",
   };
+
+  
 
   useEffect(() => {
     initSystem();
