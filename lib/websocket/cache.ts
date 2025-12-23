@@ -1,17 +1,26 @@
-const config = require('../config');
+/**
+ * Translation Cache
+ * Simple in-memory cache for translations
+ */
+
 const logger = require('./logger');
 
+const CACHE_MAX_SIZE = 500;
+
 class TranslationCache {
-  constructor(maxSize = config.limits.cacheMaxSize) {
+  private cache: Map<string, any>;
+  private maxSize: number;
+
+  constructor(maxSize: number = CACHE_MAX_SIZE) {
     this.cache = new Map();
     this.maxSize = maxSize;
   }
 
-  generateKey(text, sourceCode, targetCode) {
+  generateKey(text: string, sourceCode: string, targetCode: string): string {
     return `${text.trim()}_${sourceCode}_${targetCode}`;
   }
 
-  get(text, sourceCode, targetCode) {
+  get(text: string, sourceCode: string, targetCode: string): any | null {
     const key = this.generateKey(text, sourceCode, targetCode);
     if (this.cache.has(key)) {
       logger.debug(`Cache hit: ${key.substring(0, 50)}`);
@@ -20,28 +29,33 @@ class TranslationCache {
     return null;
   }
 
-  set(text, sourceCode, targetCode, value) {
+  set(text: string, sourceCode: string, targetCode: string, value: any): void {
     const key = this.generateKey(text, sourceCode, targetCode);
     
-    // Удаляем старые записи если кэш переполнен
+    // Evict oldest if full
     if (this.cache.size >= this.maxSize) {
       const firstKey = this.cache.keys().next().value;
-      this.cache.delete(firstKey);
-      logger.debug(`Cache eviction: ${firstKey.substring(0, 50)}`);
+      if (firstKey) {
+        this.cache.delete(firstKey);
+        logger.debug(`Cache eviction: ${firstKey.substring(0, 50)}`);
+      }
     }
     
     this.cache.set(key, value);
     logger.debug(`Cache set: ${key.substring(0, 50)}`);
   }
 
-  clear() {
+  clear(): void {
     this.cache.clear();
     logger.info('Cache cleared');
   }
 
-  getSize() {
+  getSize(): number {
     return this.cache.size;
   }
 }
 
-module.exports = new TranslationCache();
+const cache = new TranslationCache();
+
+module.exports = cache;
+export default cache;

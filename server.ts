@@ -1,15 +1,14 @@
 /**
  * Custom Server для DashkaChat
- * Обеспечивает работу Next.js + WebSocket на одном порту
+ * Next.js + WebSocket на одном порту
  */
 
 import { createServer } from 'http';
 import { parse } from 'url';
 import next from 'next';
-import { WebSocketServer } from 'ws';
 
-// TODO: Импорт WebSocket handlers из lib/websocket
-// import { setupWebSocket } from './lib/websocket/server';
+// WebSocket setup
+const { setupWebSocket } = require('./lib/websocket');
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = process.env.HOSTNAME || 'localhost';
@@ -30,29 +29,8 @@ app.prepare().then(() => {
     }
   });
 
-  // WebSocket Server
-  const wss = new WebSocketServer({ server, path: '/ws' });
-
-  wss.on('connection', (ws, req) => {
-    console.log('[WS] Client connected');
-    
-    // TODO: Интеграция с lib/websocket/handlers
-    // handleConnection(ws, req);
-
-    ws.on('message', (message) => {
-      console.log('[WS] Message received:', message.toString());
-      // TODO: handleMessage(ws, message);
-    });
-
-    ws.on('close', () => {
-      console.log('[WS] Client disconnected');
-      // TODO: handleDisconnect(ws);
-    });
-
-    ws.on('error', (error) => {
-      console.error('[WS] Error:', error);
-    });
-  });
+  // Initialize WebSocket Server
+  const wss = setupWebSocket(server);
 
   server.listen(port, () => {
     console.log(`

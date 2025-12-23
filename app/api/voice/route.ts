@@ -1,63 +1,100 @@
-const express = require('express');
-const router = express.Router();
-const path = require('path');
-const fs = require('fs');
-const upload = require('../config/multer');
-const logger = require('../utils/logger');
-const { UnifiedTranslationService } = require('../services/unifiedTranslationService');
+/**
+ * POST /api/voice
+ * Voice translation endpoint (Speech-to-Text + Translation)
+ */
 
-const translationService = new UnifiedTranslationService();
+import { NextRequest, NextResponse } from 'next/server';
+import { writeFile, unlink, mkdir } from 'fs/promises';
+import { existsSync } from 'fs';
+import path from 'path';
 
-router.post('/voice-translate', upload.single('audio'), async (req, res, next) => {
+// Ensure temp directory exists
+async function ensureTempDir(): Promise<string> {
+  const tempDir = path.join(process.cwd(), 'tmp');
+  if (!existsSync(tempDir)) {
+    await mkdir(tempDir, { recursive: true });
+  }
+  return tempDir;
+}
+
+export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  let tempFilePath: string | null = null;
+
   try {
-    if (!req.file) {
-      return res.status(400).json({ 
-        status: 'error',
-        message: 'Аудио файл не загружен' 
-      });
+    const formData = await request.formData();
+    
+    // Get audio file
+    const audioFile = formData.get('audio') as File | null;
+    if (!audioFile) {
+      return NextResponse.json(
+        { status: 'error', message: 'Audio file is required' },
+        { status: 400 }
+      );
     }
 
-    const { 
-      fromLang = 'RU', 
-      toLang = 'DE',
-      source_language = 'RU',
-      target_language = 'DE'
-    } = req.body;
+    // Get language params
+    const fromLang = (formData.get('fromLang') || formData.get('source_language') || 'RU') as string;
+    const toLang = (formData.get('toLang') || formData.get('target_language') || 'DE') as string;
+    
+    const sourceCode = fromLang.toUpperCase();
+    const targetCode = toLang.toUpperCase();
 
-    const sourceCode = (fromLang || source_language).toUpperCase();
-    const targetCode = (toLang || target_language).toUpperCase();
+    // Save file temporarily
+    const tempDir = await ensureTempDir();
+    const filename = `voice_${Date.now()}_${Math.random().toString(36).slice(2)}.webm`;
+    tempFilePath = path.join(tempDir, filename);
 
-    logger.info(`Voice translation: ${sourceCode} → ${targetCode}`);
+    const bytes = await audioFile.arrayBuffer();
+    await writeFile(tempFilePath, Buffer.from(bytes));
+
+    console.log(`[API/voice] Processing: ${sourceCode} → ${targetCode}`);
+
+    // Dynamic import services
+    const { UnifiedTranslationService } = require('@/services/translationService');
+    const translationService = new UnifiedTranslationService();
 
     const result = await translationService.translateVoice(
-      req.file.path,
+      tempFilePath,
       sourceCode,
       targetCode
     );
 
-    res.json({
+    // Cleanup temp file
+    if (tempFilePath && existsSync(tempFilePath)) {
+      await unlink(tempFilePath);
+    }
+
+    return NextResponse.json({
       status: 'success',
       originalText: result.originalText,
       translatedText: result.translatedText,
       audioUrl: result.translatedAudio ? `/audio/${path.basename(result.translatedAudio)}` : null,
       fromLanguage: result.fromLanguage,
       toLanguage: result.toLanguage,
-      processingTime: result.processingTime,
+      processingTime: Date.now() - startTime,
       confidence: result.confidence,
       provider: result.provider
     });
 
-    // Cleanup
-    if (fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
+  } catch (error: any) {
+    console.error('[API/voice] Error:', error);
+
+    // Cleanup on error
+    if (tempFilePath && existsSync(tempFilePath)) {
+      try {
+        await unlink(tempFilePath);
+      } catch (e) {
+        // Ignore cleanup errors
+      }
     }
 
-  } catch (error) {
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
-    next(error);
+    return NextResponse.json(
+      { 
+        status: 'error', 
+        message: error.message || 'Voice translation failed' 
+      },
+      { status: 500 }
+    );
   }
-});
-
-module.exports = router;
+}

@@ -1,3 +1,6 @@
-export { setupWebSocket } from './server';
-export { clientManager } from './websocket/clientManager';
+/**
+ * Library exports
+ */
+
+export { setupWebSocket, clientManager } from './websocket';
 export { handleMessage, handleDisconnect } from './websocket/handlers';

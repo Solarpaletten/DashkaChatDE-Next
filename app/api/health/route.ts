@@ -1,34 +1,16 @@
-const express = require('express');
-const router = express.Router();
-const config = require('../config');
-const cache = require('../utils/cache');
-const { clientManager } = require('../websocket');
+/**
+ * GET /api/health
+ * Health check endpoint
+ */
 
-router.get('/health', (req, res) => {
-  res.json({
+import { NextResponse } from 'next/server';
+
+export async function GET() {
+  return NextResponse.json({
     status: 'healthy',
-    service: 'DashkaBot Cloud Server',
+    service: 'DashkaChat Next.js',
     version: '3.0.0',
-    websocket_clients: clientManager.getClientCount(),
-    cache_size: cache.getSize(),
-    openai_configured: config.openai.enabled,
     uptime: process.uptime(),
-    memory_usage: process.memoryUsage(),
     timestamp: new Date().toISOString()
   });
-});
-
-router.get('/stats', (req, res) => {
-  res.json({
-    status: 'success',
-    stats: {
-      cache_size: cache.getSize(),
-      websocket_clients: clientManager.getClientCount(),
-      uptime: process.uptime(),
-      memory_usage: process.memoryUsage(),
-      version: '3.0.0'
-    }
-  });
-});
-
-module.exports = router;
+}
