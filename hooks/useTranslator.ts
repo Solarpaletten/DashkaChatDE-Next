@@ -1,12 +1,31 @@
+'use client';
+
 import { useState, useEffect, useRef } from 'react';
 
 type TranslationMode = 'manual' | 'auto';
 
-// Простой logger вместо импорта
+// Simple logger
 const logger = {
   info: (...args: any[]) => console.log('[INFO]', ...args),
   error: (...args: any[]) => console.error('[ERROR]', ...args),
   debug: (...args: any[]) => console.log('[DEBUG]', ...args)
+};
+
+// Get config based on environment (SSR-safe)
+const getConfig = () => {
+  if (typeof window === 'undefined') {
+    return { aiServer: '', wsServer: '' };
+  }
+  
+  // For Next.js: use current origin or env variable
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || window.location.origin;
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = process.env.NEXT_PUBLIC_WS_URL || `${wsProtocol}//${window.location.host}/ws`;
+  
+  return {
+    aiServer: baseUrl,
+    wsServer: wsUrl
+  };
 };
 
 export const useTranslator = () => {
@@ -31,15 +50,11 @@ export const useTranslator = () => {
   const recognitionRef = useRef<any>(null);
   const websocketRef = useRef<WebSocket | null>(null);
 
-  const config = {
-    aiServer: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080",
-    wsServer: process.env.NEXT_PUBLIC_API_URL || "ws://localhost:8080/ws",
-  };
-
-  
-
   useEffect(() => {
-    initSystem();
+    // Only run on client side
+    if (typeof window !== 'undefined') {
+      initSystem();
+    }
     return () => cleanup();
   }, []);
 
@@ -63,13 +78,19 @@ export const useTranslator = () => {
   };
 
   const cleanup = () => {
-    if (recognitionRef.current) recognitionRef.current.stop();
-    if (websocketRef.current) websocketRef.current.close();
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch {}
+    }
+    if (websocketRef.current) {
+      try { websocketRef.current.close(); } catch {}
+    }
   };
 
   const checkAIServer = async () => {
+    const config = getConfig();
     try {
-      const response = await fetch(`${config.aiServer}/health`);
+      // Next.js API route: /api/health
+      const response = await fetch(`${config.aiServer}/api/health`);
       setConnectionStatus(prev => ({ ...prev, ai: response.ok }));
     } catch {
       setConnectionStatus(prev => ({ ...prev, ai: false }));
@@ -77,6 +98,9 @@ export const useTranslator = () => {
   };
 
   const initWebSocket = () => {
+    const config = getConfig();
+    if (!config.wsServer) return;
+    
     try {
       const ws = new WebSocket(config.wsServer);
 
@@ -102,7 +126,6 @@ export const useTranslator = () => {
 
           switch (data.type) {
             case 'translation':
-              // Перевод от партнёра - обновляем UI
               if (data.username) {
                 setOriginalText(data.original || '');
                 setTranslatedText(data.translation || '');
@@ -134,6 +157,8 @@ export const useTranslator = () => {
   };
 
   const initSpeechRecognition = () => {
+    if (typeof window === 'undefined') return;
+    
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       setConnectionStatus(prev => ({ ...prev, speech: false }));
       return;
@@ -182,8 +207,10 @@ export const useTranslator = () => {
   };
 
   const detectLanguage = async (text: string): Promise<string> => {
+    const config = getConfig();
     try {
-      const response = await fetch(`${config.aiServer}/detect-language`, {
+      // Next.js API route: POST /api/languages (detection)
+      const response = await fetch(`${config.aiServer}/api/languages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text })
@@ -201,6 +228,8 @@ export const useTranslator = () => {
     setIsTranslating(true);
     setStatus('🔄 Translating...');
 
+    const config = getConfig();
+
     try {
       let fromLang: string;
       let toLang: string;
@@ -217,11 +246,12 @@ export const useTranslator = () => {
           toLang = 'RU';
         }
       } else {
-        fromLang = currentRole === 'user' ? 'RU' : 'EN';
-        toLang = currentRole === 'user' ? 'EN' : 'RU';
+        fromLang = currentRole === 'user' ? 'RU' : 'DE';
+        toLang = currentRole === 'user' ? 'DE' : 'RU';
       }
 
-      const response = await fetch(`${config.aiServer}/translate`, {
+      // Next.js API route: POST /api/translation
+      const response = await fetch(`${config.aiServer}/api/translation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -237,7 +267,7 @@ export const useTranslator = () => {
       setTranslatedText(translation);
       setStatus(`✅ Done (${fromLang} → ${toLang})`);
 
-      // ОТПРАВИТЬ В КОМНАТУ ЧЕРЕЗ WEBSOCKET
+      // Send to room via WebSocket
       if (websocketRef?.current?.readyState === WebSocket.OPEN) {
         websocketRef.current.send(JSON.stringify({
           type: 'translation',
@@ -250,9 +280,9 @@ export const useTranslator = () => {
         logger.info('Translation sent to room');
       }
 
-      // Озвучка
+      // Text-to-Speech (browser native)
       const targetLangCode = toLang.toLowerCase();
-      if ('speechSynthesis' in window && translation) {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window && translation) {
         const utterance = new SpeechSynthesisUtterance(translation);
         utterance.lang = targetLangCode === 'ru' ? 'ru-RU' : 'de-DE';
         utterance.rate = 0.9;
@@ -312,7 +342,7 @@ export const useTranslator = () => {
 
     if (recognitionRef.current) {
       recognitionRef.current.lang = newLang;
-      recognitionRef.current.stop();
+      try { recognitionRef.current.stop(); } catch {}
     }
 
     initSpeechRecognition();
@@ -341,6 +371,7 @@ export const useTranslator = () => {
   };
 
   const pasteText = async () => {
+    if (typeof window === 'undefined') return;
     try {
       const text = await navigator.clipboard.readText();
       setInputText(text);
@@ -348,6 +379,7 @@ export const useTranslator = () => {
   };
 
   const copyResult = async () => {
+    if (typeof window === 'undefined') return;
     if (translatedText) {
       try {
         await navigator.clipboard.writeText(translatedText);
@@ -382,6 +414,7 @@ export const useTranslator = () => {
     recognitionLang,
     setRecognitionLang,
     websocketRef,
-    setOriginalText
+    setOriginalText,
+    setStatus
   };
 };

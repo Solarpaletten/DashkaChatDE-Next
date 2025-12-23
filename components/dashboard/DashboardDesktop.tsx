@@ -1,13 +1,8 @@
-/**
- * DashboardDesktop Component
- * Full-featured desktop layout for translation
- */
+'use client';
 
 import React, { useState } from 'react';
 import { useTranslator } from '@/hooks/useTranslator';
 import { currentLanguageConfig } from '@/config/currentLanguage';
-
-type LayoutMode = 'vertical' | 'horizontal';
 
 const DashboardDesktop: React.FC = () => {
   const {
@@ -32,20 +27,20 @@ const DashboardDesktop: React.FC = () => {
     pasteText,
     copyResult,
     performTranslation,
-    toggleTranslationMode,
+    toggleTranslationMode
   } = useTranslator();
 
-  const [layoutMode, setLayoutMode] = useState<LayoutMode>('vertical');
+  const [layoutMode, setLayoutMode] = useState<'vertical' | 'horizontal'>('vertical');
 
-  // Auto-translate with debounce
+  // Автоперевод при изменении текста
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const text = e.target.value;
     setInputText(text);
 
     if (autoTranslate && text.trim()) {
-      const currentText = text;
+      // Debounce для автоперевода
       setTimeout(() => {
-        if (currentText === text && text.trim()) {
+        if (inputText === text && text.trim()) {
           performTranslation(text);
         }
       }, 1000);
@@ -53,18 +48,21 @@ const DashboardDesktop: React.FC = () => {
   };
 
   const toggleLayout = () => {
-    setLayoutMode((prev) => (prev === 'vertical' ? 'horizontal' : 'vertical'));
+    setLayoutMode(prev => prev === 'vertical' ? 'horizontal' : 'vertical');
   };
 
   return (
     <div className="w-full h-screen flex flex-col bg-gradient-to-br from-purple-600 via-blue-600 to-teal-600 p-6">
+
       {/* Header */}
       <header className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-4">
           <h1 className="text-white text-3xl font-bold">
             {currentLanguageConfig.app.title}
           </h1>
-          <span className="text-white/70 text-sm">💻 Desktop Mode</span>
+          <span className="text-white/70 text-sm">
+            💻 Desktop Mode
+          </span>
         </div>
 
         {/* Controls */}
@@ -98,7 +96,7 @@ const DashboardDesktop: React.FC = () => {
             {translationMode === 'manual' ? '🤖 Включить Авто' : '🎯 Фиксировать языки'}
           </button>
 
-          {/* Language Selector - Manual mode only */}
+          {/* Language Selector - показываем только в Manual режиме */}
           {translationMode === 'manual' && (
             <div className="flex gap-2">
               <button
@@ -156,17 +154,14 @@ const DashboardDesktop: React.FC = () => {
       </div>
 
       {/* Main Content Area */}
-      <main
-        className={`flex flex-1 gap-6 ${
-          layoutMode === 'vertical' ? 'flex-row' : 'flex-col'
-        }`}
-      >
+      <main className={`flex flex-1 gap-6 ${
+        layoutMode === 'vertical' ? 'flex-row' : 'flex-col'
+      }`}>
+
         {/* Input Panel */}
-        <div
-          className={`bg-white/10 rounded-2xl p-6 flex flex-col shadow-lg backdrop-blur-sm ${
-            layoutMode === 'vertical' ? 'w-1/2' : 'h-1/2'
-          }`}
-        >
+        <div className={`bg-white/10 rounded-2xl p-6 flex flex-col shadow-lg backdrop-blur-sm ${
+          layoutMode === 'vertical' ? 'w-1/2' : 'h-1/2'
+        }`}>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-white font-semibold text-lg">
               {currentMode === 'text' ? 'Исходный текст' : 'Голосовой ввод'}
@@ -224,20 +219,20 @@ const DashboardDesktop: React.FC = () => {
               <div className="text-lg font-medium mb-2">
                 {isRecording ? 'Говорите...' : 'Нажмите микрофон для записи'}
               </div>
-              <div className="text-white/80">{originalText}</div>
+              <div className="text-white/80">
+                {originalText}
+              </div>
             </div>
           )}
 
           {/* Action Buttons */}
           <div className="flex gap-3 mt-4">
             <button
-              className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl shadow-lg font-semibold transition-all flex-1 disabled:opacity-50"
+              className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl shadow-lg font-semibold transition-all flex-1"
               onClick={translateText}
               disabled={isTranslating || (!inputText.trim() && currentMode === 'text')}
             >
-              {isTranslating
-                ? '⏳ Переводим...'
-                : `🔄 ${currentLanguageConfig.buttons.translate}`}
+              {isTranslating ? '⏳ Переводим...' : `🔄 ${currentLanguageConfig.buttons.translate}`}
             </button>
 
             <button
@@ -250,11 +245,9 @@ const DashboardDesktop: React.FC = () => {
         </div>
 
         {/* Translation Panel */}
-        <div
-          className={`bg-white/10 rounded-2xl p-6 flex flex-col shadow-lg backdrop-blur-sm ${
-            layoutMode === 'vertical' ? 'w-1/2' : 'h-1/2'
-          }`}
-        >
+        <div className={`bg-white/10 rounded-2xl p-6 flex flex-col shadow-lg backdrop-blur-sm ${
+          layoutMode === 'vertical' ? 'w-1/2' : 'h-1/2'
+        }`}>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-white font-semibold text-lg">
               {currentLanguageConfig.placeholders.outputLabel}
@@ -270,7 +263,7 @@ const DashboardDesktop: React.FC = () => {
           </div>
 
           <div className="flex-1 rounded-xl p-4 bg-white text-gray-900 text-lg whitespace-pre-line overflow-auto">
-            {translatedText || 'Перевод появится здесь...'}
+            {translatedText || "Перевод появится здесь..."}
           </div>
         </div>
       </main>
@@ -283,27 +276,15 @@ const DashboardDesktop: React.FC = () => {
 
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <div
-              className={`w-2 h-2 rounded-full ${
-                connectionStatus.ai ? 'bg-green-400' : 'bg-red-400'
-              }`}
-            />
+            <div className={`w-2 h-2 rounded-full ${connectionStatus.ai ? 'bg-green-400' : 'bg-red-400'}`}></div>
             <span>AI Server</span>
           </div>
           <div className="flex items-center gap-2">
-            <div
-              className={`w-2 h-2 rounded-full ${
-                connectionStatus.ws ? 'bg-green-400' : 'bg-red-400'
-              }`}
-            />
+            <div className={`w-2 h-2 rounded-full ${connectionStatus.ws ? 'bg-green-400' : 'bg-red-400'}`}></div>
             <span>WebSocket</span>
           </div>
           <div className="flex items-center gap-2">
-            <div
-              className={`w-2 h-2 rounded-full ${
-                connectionStatus.speech ? 'bg-green-400' : 'bg-red-400'
-              }`}
-            />
+            <div className={`w-2 h-2 rounded-full ${connectionStatus.speech ? 'bg-green-400' : 'bg-red-400'}`}></div>
             <span>Speech API</span>
           </div>
         </div>

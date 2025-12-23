@@ -1,19 +1,8 @@
-/**
- * DualTranslator Component
- * Main translation interface with dual panels and room support
- */
+'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslator } from '@/hooks/useTranslator';
 import RoomJoin from './RoomJoin';
-
-interface ConversationEntry {
-  speaker: string;
-  lang: string;
-  text: string;
-  translation: string;
-  timestamp: string;
-}
 
 const DualTranslator: React.FC = () => {
   const {
@@ -28,16 +17,15 @@ const DualTranslator: React.FC = () => {
     websocketRef,
     setOriginalText,
     performTranslation,
+    setStatus
   } = useTranslator();
 
-  // Dialects configuration
   const dialects = ['de-DE', 'ru-RU'];
   const dialectNames: Record<string, string> = {
     'de-DE': '🇩🇪 Deutsch',
-    'ru-RU': '🇷🇺 Русский',
+    'ru-RU': '🇷🇺 Русский'
   };
 
-  // Local state
   const [dialect, setDialect] = useState(recognitionLang);
   const [dialectIndex, setDialectIndex] = useState(0);
   const [isConnected, setIsConnected] = useState(false);
@@ -45,31 +33,30 @@ const DualTranslator: React.FC = () => {
   const [roomCode, setRoomCode] = useState('');
   const [username, setUsername] = useState('');
   const [isWakingUp, setIsWakingUp] = useState(false);
-  const [localStatus, setLocalStatus] = useState('');
-  const [conversationHistory, setConversationHistory] = useState<ConversationEntry[]>([]);
+  const [conversationHistory, setConversationHistory] = useState<Array<{
+    speaker: string;
+    lang: string;
+    text: string;
+    translation: string;
+    timestamp: string;
+  }>>([]);
 
-  // Refs
   const leftPanelRef = useRef<HTMLTextAreaElement>(null);
   const rightPanelRef = useRef<HTMLDivElement>(null);
 
-  // Display status (prefer hook status, fallback to local)
-  const displayStatus = status || localStatus;
-
-  // Handlers
   const handleJoinRoom = (code: string, name: string) => {
     setRoomCode(code);
     setUsername(name);
 
     if (websocketRef?.current?.readyState === WebSocket.OPEN) {
-      websocketRef.current.send(
-        JSON.stringify({
-          type: 'join_room',
-          room: code,
-          username: name,
-        })
-      );
+      websocketRef.current.send(JSON.stringify({
+        type: 'join_room',
+        room: code,
+        username: name
+      }));
       setIsConnected(true);
     }
+    setShowRoomJoin(false);
   };
 
   const switchDialect = () => {
@@ -83,50 +70,10 @@ const DualTranslator: React.FC = () => {
   const copyToClipboard = async (text: string, label: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      setLocalStatus(`📄 ${label} скопирован`);
-      setTimeout(() => setLocalStatus(''), 2000);
+      alert(`${label} скопирован`);
     } catch {
-      setLocalStatus('❌ Ошибка копирования');
+      alert('Ошибка');
     }
-  };
-
-  const wakeUpAPI = async () => {
-    setIsWakingUp(true);
-    setLocalStatus('⏰ Пробуждаю backend...');
-
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-      const response = await fetch(`${apiUrl}/api/health`);
-
-      if (response.ok) {
-        setLocalStatus('✅ Backend проснулся!');
-        // Reconnect WebSocket
-        if (websocketRef?.current) {
-          websocketRef.current.close();
-        }
-      } else {
-        setLocalStatus('❌ Backend не отвечает');
-      }
-    } catch {
-      setLocalStatus('❌ Ошибка подключения к backend');
-    } finally {
-      setIsWakingUp(false);
-      setTimeout(() => setLocalStatus(''), 3000);
-    }
-  };
-
-  const pasteToOriginal = async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      setOriginalText(text);
-    } catch (err) {
-      console.error('Не удалось вставить текст:', err);
-    }
-  };
-
-  const handleClearAll = () => {
-    setOriginalText('');
-    if (isRecording) toggleRecording();
   };
 
   // Keyboard shortcuts
@@ -140,78 +87,96 @@ const DualTranslator: React.FC = () => {
         toggleRecording();
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [dialectIndex, isRecording, toggleRecording]);
+  }, [dialectIndex, isRecording]);
 
-  // Update conversation history
+  // Update conversation history when translation completes
   useEffect(() => {
     if (translatedText && translatedText !== 'Перевод появится здесь...' && originalText) {
-      const newEntry: ConversationEntry = {
+      const newEntry = {
         speaker: username || (dialect.startsWith('ru') ? 'RU' : 'DE'),
         lang: dialect,
         text: originalText,
         translation: translatedText,
-        timestamp: new Date().toLocaleTimeString('ru-RU', {
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
+        timestamp: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
       };
-
-      setConversationHistory((prev) => {
-        if (prev.length > 0 && prev[prev.length - 1].text === originalText) {
-          return prev;
-        }
+      setConversationHistory(prev => {
+        if (prev.length > 0 && prev[prev.length - 1].text === originalText) return prev;
         return [...prev, newEntry];
       });
     }
-  }, [translatedText, originalText, dialect, username]);
-
-  // Sync dialect with recognition lang
-  useEffect(() => {
-    setDialect(recognitionLang);
-  }, [recognitionLang]);
-
-  // Auto-scroll panels
-  useEffect(() => {
-    if (leftPanelRef.current) {
-      leftPanelRef.current.scrollTop = leftPanelRef.current.scrollHeight;
-    }
-  }, [originalText]);
-
-  useEffect(() => {
-    if (rightPanelRef.current) {
-      rightPanelRef.current.scrollTop = rightPanelRef.current.scrollHeight;
-    }
   }, [translatedText]);
+
+  useEffect(() => setDialect(recognitionLang), [recognitionLang]);
+  
+  useEffect(() => {
+    if (leftPanelRef.current) leftPanelRef.current.scrollTop = leftPanelRef.current.scrollHeight;
+  }, [originalText]);
+  
+  useEffect(() => {
+    if (rightPanelRef.current) rightPanelRef.current.scrollTop = rightPanelRef.current.scrollHeight;
+  }, [translatedText]);
+
+  const wakeUpAPI = async () => {
+    setIsWakingUp(true);
+    if (setStatus) setStatus('⏰ Пробуждаю backend...');
+
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+      const response = await fetch(`${baseUrl}/api/health`);
+
+      if (response.ok) {
+        if (setStatus) setStatus('✅ Backend проснулся!');
+      } else {
+        if (setStatus) setStatus('❌ Backend не отвечает');
+      }
+    } catch (error) {
+      if (setStatus) setStatus('❌ Ошибка подключения к backend');
+    } finally {
+      setIsWakingUp(false);
+    }
+  };
+
+  const pasteToOriginal = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      setOriginalText(text);
+    } catch (err) {
+      console.error("Не удалось вставить текст:", err);
+    }
+  };
+
+  const clearAll = () => {
+    setOriginalText("");
+    if (isRecording) toggleRecording();
+  };
 
   return (
     <>
       {/* Room Join Modal */}
       {!isConnected && showRoomJoin && (
-        <RoomJoin onJoin={handleJoinRoom} onClose={() => setShowRoomJoin(false)} />
+        <RoomJoin
+          onJoin={handleJoinRoom}
+          onClose={() => setShowRoomJoin(false)}
+        />
       )}
-
+      
       <div className="w-full h-screen flex flex-col bg-gradient-to-br from-purple-600 via-blue-600 to-teal-600">
         {/* Header */}
         <header className="flex justify-between items-center p-6 flex-wrap gap-3">
           <h1 className="text-white text-3xl font-bold">🎤 Dual Translator</h1>
-
+          
           <div className="flex items-center gap-3">
             {/* API Status Indicators */}
             <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2">
               <span className="text-white text-sm font-medium">API</span>
               <div
-                className={`w-3 h-3 rounded-full ${
-                  connectionStatus.ai ? 'bg-green-400' : 'bg-red-400'
-                }`}
+                className={`w-3 h-3 rounded-full ${connectionStatus.ai ? 'bg-green-400' : 'bg-red-400'}`}
                 title={connectionStatus.ai ? 'Backend доступен' : 'Backend недоступен'}
               />
               <div
-                className={`w-3 h-3 rounded-full ${
-                  connectionStatus.ws ? 'bg-green-400' : 'bg-red-400'
-                }`}
+                className={`w-3 h-3 rounded-full ${connectionStatus.ws ? 'bg-green-400' : 'bg-red-400'}`}
                 title={connectionStatus.ws ? 'WebSocket подключен' : 'WebSocket отключен'}
               />
             </div>
@@ -239,19 +204,19 @@ const DualTranslator: React.FC = () => {
               </button>
             )}
 
-            {/* Record Button */}
+            {/* Start/Stop Button */}
             <button
               onClick={toggleRecording}
               className={`px-8 py-4 rounded-xl font-semibold text-white text-lg shadow-lg transition-all ${
-                isRecording
-                  ? 'bg-red-600 hover:bg-red-700 animate-pulse'
+                isRecording 
+                  ? 'bg-red-600 hover:bg-red-700 animate-pulse' 
                   : 'bg-green-600 hover:bg-green-700'
               }`}
             >
               {isRecording ? '⏹️ Остановить' : '▶️ Запустить'}
             </button>
           </div>
-
+          
           {/* Dialect Selector */}
           <button
             onClick={switchDialect}
@@ -264,16 +229,14 @@ const DualTranslator: React.FC = () => {
         {/* Status Bar */}
         <div className="px-6 pb-4">
           <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center text-white">
-            <span>{displayStatus}</span>
+            <span>{status}</span>
             <span className="ml-3 text-sm opacity-70">
-              {isConnected
-                ? `Комната: ${roomCode} | ${username}`
-                : '(Enter = язык | Space = запись)'}
+              {isConnected ? `Комната: ${roomCode} | ${username}` : '(Enter = язык | Space = запись)'}
             </span>
           </div>
         </div>
 
-        {/* Main Panels */}
+        {/* Main Content - Two Panels */}
         <main className="flex-1 flex gap-4 px-6 pb-6">
           {/* Left Panel - Original */}
           <div className="flex-1 bg-white/10 backdrop-blur-sm rounded-2xl p-6 flex flex-col">
@@ -291,27 +254,29 @@ const DualTranslator: React.FC = () => {
                   📥 Вставить
                 </button>
                 <button
-                  onClick={() => copyToClipboard(originalText, 'Оригинал')}
+                  onClick={() => navigator.clipboard.writeText(originalText)}
                   className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-white text-sm"
                   disabled={!originalText}
                 >
                   📋 Копировать
                 </button>
                 <button
-                  onClick={handleClearAll}
+                  onClick={clearAll}
                   className="px-3 py-1 bg-red-500/70 hover:bg-red-600 rounded-lg text-white text-sm"
                 >
                   🗑️ Стереть
                 </button>
                 <button
-                  onClick={() => isRecording && toggleRecording()}
+                  onClick={() => {
+                    if (isRecording) toggleRecording();
+                  }}
                   className="px-3 py-1 bg-yellow-500/70 hover:bg-yellow-600 rounded-lg text-white text-sm"
                 >
                   ⏹️ Стоп
                 </button>
               </div>
             </div>
-
+            
             <textarea
               ref={leftPanelRef}
               value={originalText}
@@ -342,11 +307,7 @@ const DualTranslator: React.FC = () => {
                 📋 Копировать
               </button>
             </div>
-
-            <div
-              ref={rightPanelRef}
-              className="flex-1 bg-white/5 rounded-xl p-4 overflow-y-auto"
-            >
+            <div ref={rightPanelRef} className="flex-1 bg-white/5 rounded-xl p-4 overflow-y-auto">
               <p className="text-white text-lg leading-relaxed whitespace-pre-wrap">
                 {translatedText || 'Перевод появится здесь...'}
               </p>
@@ -354,7 +315,7 @@ const DualTranslator: React.FC = () => {
           </div>
         </main>
 
-        {/* Footer - History */}
+        {/* Footer - Conversation History */}
         <footer className="bg-white/10 backdrop-blur-sm p-6 text-white">
           <h3 className="font-semibold mb-3 text-lg">🕐 История разговора</h3>
           <div className="max-h-48 overflow-y-auto space-y-3 pr-2">
@@ -362,10 +323,7 @@ const DualTranslator: React.FC = () => {
               <p className="text-white/50 text-center py-4">История пуста</p>
             ) : (
               conversationHistory.map((msg, index) => (
-                <div
-                  key={index}
-                  className="bg-white/10 rounded-lg p-3 border-l-4 border-white/30"
-                >
+                <div key={index} className="bg-white/10 rounded-lg p-3 border-l-4 border-white/30">
                   <div className="flex justify-between items-center mb-1">
                     <span className="font-semibold">{msg.speaker}</span>
                     <span className="text-sm opacity-70">{msg.timestamp}</span>

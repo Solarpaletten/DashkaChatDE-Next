@@ -1,8 +1,10 @@
+'use client';
+
 import React, { useState } from 'react';
 
 interface RoomJoinProps {
   onJoin: (roomCode: string, username: string) => void;
-  onClose?: () => void; // Опциональный callback для закрытия
+  onClose?: () => void;
 }
 
 const RoomJoin: React.FC<RoomJoinProps> = ({ onJoin, onClose }) => {
@@ -19,7 +21,7 @@ const RoomJoin: React.FC<RoomJoinProps> = ({ onJoin, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
       <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 relative shadow-2xl">
-        {/* Кнопка закрытия */}
+        {/* Close Button */}
         {onClose && (
           <button
             onClick={onClose}
@@ -59,7 +61,7 @@ const RoomJoin: React.FC<RoomJoinProps> = ({ onJoin, onClose }) => {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="DE"
+              placeholder="Имя"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               required
             />
