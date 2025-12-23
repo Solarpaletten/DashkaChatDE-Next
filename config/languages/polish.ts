@@ -1,33 +1,55 @@
-import type { LanguageConfig } from '../types';
+/**
+ * Polish Language Configuration
+ */
 
-export const polishConfig: LanguageConfig = {
-  meta: {
-    code: 'pl',
-    name: 'Polish', 
-    nativeName: 'Polski',
-    flag: '🇵🇱',
-    direction: 'ltr'
-  },
+export const polish = {
+  code: 'pl',
+  name: 'Polish',
+  nativeName: 'Polski',
+  flag: '🇵🇱',
+
+  // App strings
   app: {
     title: '🚀 Dual Translator',
-    subtitle: 'Galaxy S24 - Russian ⇄ Polish Voice Translator 2.1'
+    subtitle: 'Russian ⇄ Polish Voice Translator',
   },
+
+  // Button labels
   buttons: {
     translate: 'Перевести',
     clear: 'Очистить всё',
-    record: 'Записываю... Нажмите когда закончите'
+    record: 'Записываю... Нажмите когда закончите',
   },
+
+  // Placeholders
   placeholders: {
-    inputText: 'Привет',
+    inputText: 'Введите текст...',
     outputLabel: 'Перевод:',
-    sourceText: 'Исходный текст:'  // ← ДОБАВЛЕНО
+    sourceText: 'Исходный текст:',
   },
-  languageSelector: {               // ← ДОБАВЛЕНО
+
+  // Language selector
+  languageSelector: {
     sourceLabel: 'Russian Speaker',
-    targetLabel: 'Polish Speaker'
+    targetLabel: 'Polish Speaker',
   },
+
+  // Translation languages
   translationLanguages: {
     source: { code: 'ru', name: 'Русский', flag: '🇷🇺' },
-    target: { code: 'pl', name: 'Polski', flag: '🇵🇱' }
-  }
+    target: { code: 'pl', name: 'Polski', flag: '🇵🇱' },
+  },
+
+  // UI translations (i18n)
+  ui: {
+    title: 'DashkaChat',
+    subtitle: 'Tłumaczenie w czasie rzeczywistym',
+    joinRoom: 'Dołącz do pokoju',
+    leaveRoom: 'Opuść pokój',
+    startRecording: 'Rozpocznij nagrywanie',
+    stopRecording: 'Zatrzymaj nagrywanie',
+    translate: 'Przetłumacz',
+    settings: 'Ustawienia',
+    language: 'Język',
+  },
 };

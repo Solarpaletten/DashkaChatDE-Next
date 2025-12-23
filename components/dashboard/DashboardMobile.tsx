@@ -1,3 +1,7 @@
+/**
+ * DashboardMobile Component
+ * Mobile-optimized compact layout for translation
+ */
 
 import React from 'react';
 import { useTranslator } from '@/hooks/useTranslator';
@@ -21,28 +25,25 @@ const DashboardMobile: React.FC = () => {
     translateText,
     clearText,
     pasteText,
-    copyResult
+    copyResult,
   } = useTranslator();
 
   return (
     <div className="w-full min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-teal-600 p-3">
       <div className="max-w-sm mx-auto">
-        
         {/* Header */}
         <header className="text-center mb-4">
-          <h1 className="text-white text-xl font-bold mb-1">
-            🚀 Dual Translator
-          </h1>
+          <h1 className="text-white text-xl font-bold mb-1">🚀 Dual Translator</h1>
           <p className="text-white/80 text-xs mb-3">
             📱 Mobile | Russian ⇄ Polish Voice Translator
           </p>
-          
+
           {/* Language Selector - Compact */}
           <div className="flex gap-2">
             <button
               className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-all ${
-                currentRole === 'user' 
-                  ? 'bg-white/90 text-gray-900' 
+                currentRole === 'user'
+                  ? 'bg-white/90 text-gray-900'
                   : 'bg-white/20 text-white'
               }`}
               onClick={() => handleRoleChange('user')}
@@ -51,8 +52,8 @@ const DashboardMobile: React.FC = () => {
             </button>
             <button
               className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-all ${
-                currentRole === 'steuerberater' 
-                  ? 'bg-white/90 text-gray-900' 
+                currentRole === 'steuerberater'
+                  ? 'bg-white/90 text-gray-900'
                   : 'bg-white/20 text-white'
               }`}
               onClick={() => handleRoleChange('steuerberater')}
@@ -66,9 +67,7 @@ const DashboardMobile: React.FC = () => {
         <div className="flex mb-4 bg-black/20 rounded-xl p-1">
           <button
             className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-              currentMode === 'text'
-                ? 'bg-white/20 text-white'
-                : 'text-white/70'
+              currentMode === 'text' ? 'bg-white/20 text-white' : 'text-white/70'
             }`}
             onClick={() => setCurrentMode('text')}
           >
@@ -76,9 +75,7 @@ const DashboardMobile: React.FC = () => {
           </button>
           <button
             className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-              currentMode === 'voice'
-                ? 'bg-white/20 text-white'
-                : 'text-white/70'
+              currentMode === 'voice' ? 'bg-white/20 text-white' : 'text-white/70'
             }`}
             onClick={() => setCurrentMode('voice')}
           >
@@ -93,7 +90,6 @@ const DashboardMobile: React.FC = () => {
 
         {/* Input Section */}
         <div className="bg-white/10 rounded-2xl p-4 mb-4 shadow-lg backdrop-blur-sm">
-          
           {/* Text Mode */}
           {currentMode === 'text' && (
             <div className="mb-4">
@@ -104,7 +100,7 @@ const DashboardMobile: React.FC = () => {
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                 />
-                
+
                 {/* Quick Actions - Mobile */}
                 <div className="absolute top-2 right-2 flex gap-1">
                   <button
@@ -137,7 +133,7 @@ const DashboardMobile: React.FC = () => {
               >
                 {isRecording ? '⏹️' : '🎤'}
               </button>
-              
+
               <div className="bg-white/5 rounded-xl p-3 text-white text-sm">
                 {originalText}
               </div>
@@ -147,13 +143,13 @@ const DashboardMobile: React.FC = () => {
           {/* Control Buttons - Stack on Mobile */}
           <div className="space-y-2">
             <button
-              className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl shadow-lg font-semibold transition-all"
+              className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl shadow-lg font-semibold transition-all disabled:opacity-50"
               onClick={translateText}
               disabled={isTranslating}
             >
               {isTranslating ? '⏳ Переводим...' : '🔄 Перевести'}
             </button>
-            
+
             <button
               className="w-full bg-gray-500 hover:bg-gray-600 text-white py-2 rounded-xl font-semibold transition-all"
               onClick={clearText}
@@ -176,7 +172,7 @@ const DashboardMobile: React.FC = () => {
           </div>
 
           <div className="rounded-xl p-3 bg-white text-gray-900 text-sm min-h-[60px] whitespace-pre-line">
-            {translatedText || "Перевод появится здесь..."}
+            {translatedText || 'Перевод появится здесь...'}
           </div>
         </div>
 
@@ -184,18 +180,30 @@ const DashboardMobile: React.FC = () => {
         <div className="bg-black/20 rounded-xl p-3 text-center text-white text-xs">
           <div className="font-bold mb-2">Samsung Galaxy S24</div>
           <div className="mb-2">Подключен через Wi-Fi</div>
-          
+
           <div className="grid grid-cols-1 gap-1">
             <div className="flex items-center justify-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${connectionStatus.ai ? 'bg-green-400' : 'bg-red-400'}`}></div>
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  connectionStatus.ai ? 'bg-green-400' : 'bg-red-400'
+                }`}
+              />
               <span>AI Server</span>
             </div>
             <div className="flex items-center justify-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${connectionStatus.ws ? 'bg-green-400' : 'bg-red-400'}`}></div>
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  connectionStatus.ws ? 'bg-green-400' : 'bg-red-400'
+                }`}
+              />
               <span>WebSocket</span>
             </div>
             <div className="flex items-center justify-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${connectionStatus.speech ? 'bg-green-400' : 'bg-red-400'}`}></div>
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  connectionStatus.speech ? 'bg-green-400' : 'bg-red-400'
+                }`}
+              />
               <span>Speech API</span>
             </div>
           </div>
@@ -206,4 +214,3 @@ const DashboardMobile: React.FC = () => {
 };
 
 export default DashboardMobile;
-        

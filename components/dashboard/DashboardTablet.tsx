@@ -1,3 +1,7 @@
+/**
+ * DashboardTablet Component
+ * Tablet-optimized layout for translation
+ */
 
 import React from 'react';
 import { useTranslator } from '@/hooks/useTranslator';
@@ -21,13 +25,12 @@ const DashboardTablet: React.FC = () => {
     translateText,
     clearText,
     pasteText,
-    copyResult
+    copyResult,
   } = useTranslator();
 
   return (
     <div className="w-full min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-teal-600 p-4">
       <div className="max-w-3xl mx-auto">
-        
         {/* Header */}
         <header className="text-center mb-6">
           <h1 className="text-white text-2xl font-bold mb-2">
@@ -36,13 +39,13 @@ const DashboardTablet: React.FC = () => {
           <p className="text-white/80 text-sm mb-4">
             📲 iPad Mode | {currentLanguageConfig.app.subtitle}
           </p>
-          
+
           {/* Language Selector */}
           <div className="flex gap-3 justify-center">
             <button
               className={`px-4 py-2 rounded-xl font-semibold transition-all ${
-                currentRole === 'user' 
-                  ? 'bg-white/90 text-gray-900' 
+                currentRole === 'user'
+                  ? 'bg-white/90 text-gray-900'
                   : 'bg-white/20 text-white hover:bg-white/30'
               }`}
               onClick={() => handleRoleChange('user')}
@@ -51,8 +54,8 @@ const DashboardTablet: React.FC = () => {
             </button>
             <button
               className={`px-4 py-2 rounded-xl font-semibold transition-all ${
-                currentRole === 'steuerberater' 
-                  ? 'bg-white/90 text-gray-900' 
+                currentRole === 'steuerberater'
+                  ? 'bg-white/90 text-gray-900'
                   : 'bg-white/20 text-white hover:bg-white/30'
               }`}
               onClick={() => handleRoleChange('steuerberater')}
@@ -106,7 +109,7 @@ const DashboardTablet: React.FC = () => {
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
               />
-              
+
               {/* Quick Actions */}
               <div className="absolute top-3 right-3 flex gap-2">
                 <button
@@ -140,23 +143,23 @@ const DashboardTablet: React.FC = () => {
               >
                 {isRecording ? '⏹️' : '🎤'}
               </button>
-              
-              <div className="bg-white/5 rounded-xl p-4 text-white">
-                {originalText}
-              </div>
+
+              <div className="bg-white/5 rounded-xl p-4 text-white">{originalText}</div>
             </div>
           )}
 
           {/* Control Buttons */}
           <div className="flex gap-3">
             <button
-              className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl shadow-lg font-semibold transition-all flex-1"
+              className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl shadow-lg font-semibold transition-all flex-1 disabled:opacity-50"
               onClick={translateText}
               disabled={isTranslating}
             >
-              {isTranslating ? '⏳ Переводим...' : `🔄 ${currentLanguageConfig.buttons.translate}`}
+              {isTranslating
+                ? '⏳ Переводим...'
+                : `🔄 ${currentLanguageConfig.buttons.translate}`}
             </button>
-            
+
             <button
               className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-xl shadow-lg font-semibold transition-all"
               onClick={clearText}
@@ -181,7 +184,7 @@ const DashboardTablet: React.FC = () => {
           </div>
 
           <div className="rounded-xl p-4 bg-white text-gray-900 min-h-[100px] whitespace-pre-line">
-            {translatedText || "Перевод появится здесь..."}
+            {translatedText || 'Перевод появится здесь...'}
           </div>
         </div>
 
@@ -189,18 +192,30 @@ const DashboardTablet: React.FC = () => {
         <div className="bg-black/20 rounded-xl p-4 text-center text-white text-sm">
           <div className="font-bold mb-2">Samsung Galaxy S24</div>
           <div className="mb-3">Подключен через Wi-Fi</div>
-          
+
           <div className="flex justify-center gap-4">
             <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${connectionStatus.ai ? 'bg-green-400' : 'bg-red-400'}`}></div>
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  connectionStatus.ai ? 'bg-green-400' : 'bg-red-400'
+                }`}
+              />
               <span>AI Server</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${connectionStatus.ws ? 'bg-green-400' : 'bg-red-400'}`}></div>
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  connectionStatus.ws ? 'bg-green-400' : 'bg-red-400'
+                }`}
+              />
               <span>WebSocket</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${connectionStatus.speech ? 'bg-green-400' : 'bg-red-400'}`}></div>
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  connectionStatus.speech ? 'bg-green-400' : 'bg-red-400'
+                }`}
+              />
               <span>Speech API</span>
             </div>
           </div>

@@ -269,7 +269,8 @@ Respond with ONLY the 2-letter code, nothing else.`,
 
       const detectedCode = response.choices[0]?.message?.content?.trim().toUpperCase();
 
-      if (this.supportedLanguages[detectedCode]) {
+      // Check if valid detection
+      if (detectedCode && this.supportedLanguages[detectedCode]) {
         return {
           language: detectedCode,
           confidence: 0.95,
@@ -278,13 +279,15 @@ Respond with ONLY the 2-letter code, nothing else.`,
       }
 
       // Try to match partial response
-      for (const code of Object.keys(this.supportedLanguages)) {
-        if (detectedCode?.includes(code)) {
-          return {
-            language: code,
-            confidence: 0.8,
-            provider: 'openai-detection-fuzzy',
-          };
+      if (detectedCode) {
+        for (const code of Object.keys(this.supportedLanguages)) {
+          if (detectedCode.includes(code)) {
+            return {
+              language: code,
+              confidence: 0.8,
+              provider: 'openai-detection-fuzzy',
+            };
+          }
         }
       }
 
